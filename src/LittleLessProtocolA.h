@@ -72,6 +72,7 @@ private:
   int readHex(char c);
   bool setBin();
   bool setASCII();
+  void handleError();
 };
 
 

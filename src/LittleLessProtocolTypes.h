@@ -20,10 +20,23 @@ enum class llp_MsgType {
 };
 
 struct llp_RxStruct {
-  bool    handleSingleBytes;///< if true handleByte() and handleByteFinish() will be called for ever received byte else handleMsg() will be called once.
-  uint8_t *buf;             ///< Pointer to rx buffer, set by application
-  uint8_t bufTotalSize;     ///< Needed bytes in rx buffer, set by protocol
-  uint8_t bufSize;          ///< Filled bytes in rxBuffer, set by protocol
+  /// Needed of message, set by protocol
+  uint8_t msgTotalSize;
+
+  /// Pointer to rx buffer, set by application
+  uint8_t *buf;
+
+  /// Size of rx buffer, set by application
+  /// If this is less than msgTotalSize handleMsgData() will be called more than one times.
+  /// bufTotalSize must be >= 1.
+  uint8_t bufTotalSize;
+  
+  /// Offset of buf start, set by protocol.
+  /// This will be increased by bufTotalSize every time handleMsgData() must be called. 
+  uint8_t bufOffset;
+
+  /// Filled bytes in rxBuffer, set by protocol
+  uint8_t bufSize;
 };
 
 
@@ -45,9 +58,8 @@ public:
   // Rx part
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
-  virtual void handleMsg(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) = 0;
-  virtual void handleByte(llp_MsgType msgType, uint8_t cmdId, uint8_t pos, uint8_t data) = 0;
-  virtual void handleBytesFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool chkSumOK) = 0;
+  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) = 0;
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK) = 0;
   
   // general part
 

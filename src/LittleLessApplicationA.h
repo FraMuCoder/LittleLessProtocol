@@ -29,9 +29,8 @@ public:
   // Rx part
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsg(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx);
-  virtual void handleByte(llp_MsgType msgType, uint8_t cmdId, uint8_t pos, uint8_t data);
-  virtual void handleBytesFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool chkSumOK);
+  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx);
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK);
 
   // general part
 
@@ -61,6 +60,7 @@ private:
 
   bool          m_connected;
   appState      m_appState;
+  uint8_t       m_rxBuf;
   uint8_t       m_protoVersion;
   const uint8_t m_ownVersion;       ///< upper nibble max. supported version, lower nibbler min. supported version
   uint8_t       m_otherVersion;
@@ -72,8 +72,8 @@ private:
   static const char * const S_CMDS[3] PROGMEM;
 
   bool canHandleVersion(llp_MsgType msgType, llp_RxStruct &rx);
-  void handleVersionByte(llp_MsgType msgType, uint8_t pos, uint8_t data);
-  void handleVersionBytesFinish(llp_MsgType msgType, uint8_t chkSum, bool chkSumOK);
+  void handleVersionData(llp_MsgType msgType, const llp_RxStruct &rx);
+  void handleVersionFinish(llp_MsgType msgType, uint8_t chkSum, bool msgOK);
   void sendVersion(llp_MsgType msgType);
 };
 

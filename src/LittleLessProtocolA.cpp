@@ -164,16 +164,11 @@ void LittleLessProtocolA::loop() {
 
     if ((c == '\n') || (c == '\r')) {
       if (m_readState == frameState::done) {
-        if (m_rxData.handleSingleBytes) {
-          handleBytesFinish(m_msgType, m_cmdId, 0xFF, true);
-        } else {
-          handleMsg(m_msgType, m_cmdId, m_rxData);
-        }
+        handleMsgFinish(m_msgType, m_cmdId, 0xFF, true);
+      } else {
+        handleMsgFinish(m_msgType, m_cmdId, 0xFF, false);
       }
       m_readState = frameState::type;
-      m_rxData.buf = NULL;
-      m_rxData.bufTotalSize = 0;
-      m_rxData.bufSize = 0;
       m_cmdLen = 0;
     } else {
       switch (m_readState) {
@@ -187,7 +182,7 @@ void LittleLessProtocolA::loop() {
             default:  m_msgType = llp_MsgType::none; break;
           }
           if ( m_msgType != llp_MsgType::none) m_readState = frameState::cmd;
-          else                                 m_readState = frameState::error;
+          else                                 handleError();
           break;
         ////////////////////////////////////////////////////////
         //case frameState::colon1:
@@ -197,7 +192,7 @@ void LittleLessProtocolA::loop() {
           if (c == ':') {
             m_readState = (frameState)((int)m_readState + 1);
           } else {
-            m_readState = frameState::error;
+            handleError();
           }
           break;
         ////////////////////////////////////////////////////////
@@ -209,7 +204,7 @@ void LittleLessProtocolA::loop() {
             if (m_cmdId < 0xFF) {
               m_readState = frameState::colon1;
             } else {
-              m_readState = frameState::error;
+              handleError();
             }
           }
           break;
@@ -218,9 +213,11 @@ void LittleLessProtocolA::loop() {
           {
             int val = readHex(c);
             if (val >= 0) {
-              m_rxData.bufTotalSize = (uint8_t)val;
+              m_rxData.msgTotalSize = (uint8_t)val;
+              m_rxData.bufOffset = 0;
+              m_rxData.bufSize = 0;
               if (canHandleMsg(m_msgType, m_cmdId, m_rxData)) m_readState = frameState::colon2;
-              else                                            m_readState = frameState::error;
+              else                                            handleError();
             }
           }
           break;
@@ -228,56 +225,68 @@ void LittleLessProtocolA::loop() {
         case frameState::dataBin:
           if (c == '"') {
             m_readState = frameState::dataASCII;
-          } else if (m_rxData.bufSize < m_rxData.bufTotalSize) {
+          } else if ((m_rxData.bufOffset + m_rxData.bufSize) < m_rxData.msgTotalSize) {
             int val = readHex(c);
             if (val >= 0) {
-              if (m_rxData.handleSingleBytes) {
-                handleByte(m_msgType, m_cmdId, m_rxData.bufSize, (uint8_t)val);
-              } else {
-                m_rxData.buf[m_rxData.bufSize] = (uint8_t)val;
-              }
+              m_rxData.buf[m_rxData.bufSize] = (uint8_t)val;
               ++m_rxData.bufSize;
               if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-                 m_readState = frameState::colon3;
+                handleMsgData(m_msgType, m_cmdId, m_rxData);
+                m_rxData.bufOffset += m_rxData.bufTotalSize;
+                m_rxData.bufSize = 0;
+              }
+              if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
+                if (m_rxData.bufSize > 0) {
+                  handleMsgData(m_msgType, m_cmdId, m_rxData);
+                }
+                m_readState = frameState::colon3;
               }
             }
           } else {
-            m_readState = frameState::error;
+            handleError();
           }
           break;
         ////////////////////////////////////////////////////////
         case frameState::dataASCII:
           if (c == '"') {
-            if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-               m_readState = frameState::colon3;
+            if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
+              if (m_rxData.bufSize > 0) {
+                handleMsgData(m_msgType, m_cmdId, m_rxData);
+              }
+              m_readState = frameState::colon3;
             } else {
               m_readState = frameState::dataBin;
             }
-          } else if (m_rxData.bufSize < m_rxData.bufTotalSize) {
+          } else if ((m_rxData.bufOffset + m_rxData.bufSize) < m_rxData.msgTotalSize) {
             if (c == '\\') {
               m_readState = frameState::dataASCIIesc;
             } else {
-              if (m_rxData.handleSingleBytes) {
-                handleByte(m_msgType, m_cmdId, m_rxData.bufSize, (uint8_t)c);
-              } else {
-                m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
-              }
+              m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
               ++m_rxData.bufSize;
+              if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
+                handleMsgData(m_msgType, m_cmdId, m_rxData);
+                m_rxData.bufOffset += m_rxData.bufTotalSize;
+                m_rxData.bufSize = 0;
+              }
             }
           } else {
-            m_readState = frameState::error;
+            handleError();
           }
           break;
         ////////////////////////////////////////////////////////
         case frameState::dataASCIIesc:
-          if (m_rxData.handleSingleBytes) {
-            handleByte(m_msgType, m_cmdId, m_rxData.bufSize, (uint8_t)c);
-          } else {
-            m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
-          }
+          m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
           ++m_rxData.bufSize;
           if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-             m_readState = frameState::colon3;
+            handleMsgData(m_msgType, m_cmdId, m_rxData);
+            m_rxData.bufOffset += m_rxData.bufTotalSize;
+            m_rxData.bufSize = 0;
+          }
+          if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
+            if (m_rxData.bufSize > 0) {
+              handleMsgData(m_msgType, m_cmdId, m_rxData);
+            }
+            m_readState = frameState::colon3;
           } else {
             m_readState = frameState::dataASCII;
           }
@@ -310,7 +319,15 @@ int LittleLessProtocolA::readHex(char c) {
       return -1; // not finish
     }
   } else {
-    m_readState = frameState::error;
+    handleError();
     return -2;  // error
   }
+}
+
+void LittleLessProtocolA::handleError() {
+  if (   (m_readState >= frameState::colon2)
+      && (m_readState <= frameState::done)) {
+    handleMsgFinish(m_msgType, m_cmdId, 0xFF, false);
+  }
+  m_readState = frameState::error;
 }

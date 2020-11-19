@@ -10,10 +10,10 @@
 
 static const char CMD_VERSION[3] PROGMEM = "ver";
 static const char CMD_ECHO[3]    PROGMEM = "ech";
-static const char CMD_DEBUF[3]   PROGMEM = "dbg";
+static const char CMD_DEBUG[3]   PROGMEM = "dbg";
 
 const char * const LittleLessApplicationA::S_CMDS[3] PROGMEM = {
-  CMD_VERSION, CMD_ECHO, CMD_DEBUF
+  CMD_VERSION, CMD_ECHO, CMD_DEBUG
 };
 
 static uint8_t combineVersions(uint8_t v1, uint8_t v2) {
@@ -49,18 +49,15 @@ bool LittleLessApplicationA::canHandleMsg(llp_MsgType msgType, uint8_t cmdId, ll
   }
 }
 
-void LittleLessApplicationA::handleMsg(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) {
-}
-
-void LittleLessApplicationA::handleByte(llp_MsgType msgType, uint8_t cmdId, uint8_t pos, uint8_t data) {
+void LittleLessApplicationA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) {
   switch ((cmd)cmdId) {
-    case cmd::Version: handleVersionByte(msgType, pos, data); break;
+    case cmd::Version: handleVersionData(msgType, rx); break;
   }
 }
 
-void LittleLessApplicationA::handleBytesFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool chkSumOK) {
+void LittleLessApplicationA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK) {
     switch ((cmd)cmdId) {
-      case cmd::Version: handleVersionBytesFinish(msgType, chkSum, chkSumOK); break;
+      case cmd::Version: handleVersionFinish(msgType, chkSum, msgOK); break;
     }
 }
 
@@ -93,9 +90,9 @@ void LittleLessApplicationA::loop() {
 }
 
 bool LittleLessApplicationA::canHandleVersion(llp_MsgType msgType, llp_RxStruct &rx) {
-  if (rx.bufTotalSize >= 3) {
-    rx.buf = NULL;
-    rx.handleSingleBytes = true;
+  if (rx.msgTotalSize >= 3) {
+    rx.buf = &m_rxBuf;
+    rx.bufTotalSize = sizeof(m_rxBuf);
     m_appState = appState::waitProtoVersion;
     return true;
   } else {
@@ -103,25 +100,26 @@ bool LittleLessApplicationA::canHandleVersion(llp_MsgType msgType, llp_RxStruct 
   }
 }
 
-void LittleLessApplicationA::handleVersionByte(llp_MsgType msgType, uint8_t pos, uint8_t data) {
+void LittleLessApplicationA::handleVersionData(llp_MsgType msgType, const llp_RxStruct &rx) {
+  uint8_t pos = rx.bufOffset;
   switch (m_appState) {
     case appState::waitProtoVersion:
-      m_protoVersion = combineVersions(S_PROTO_VERSION, data);
+      m_protoVersion = combineVersions(S_PROTO_VERSION, m_rxBuf);
       if (isVersionValid(m_protoVersion)) m_appState = appState::waitAppVersion;
       else                                m_appState = appState::versionError;
       break;
     case appState::waitAppVersion:
-      m_otherVersion = data;
+      m_otherVersion = m_rxBuf;
       m_appState = appState::waitCombinedAppVersion;
       break;
     case appState::waitCombinedAppVersion:
-      m_otherVersion = combineVersions(m_otherVersion, data);
+      m_otherVersion = combineVersions(m_otherVersion, m_rxBuf);
       m_combinedVersion = combineVersions(m_ownVersion, m_otherVersion);
       if (isVersionValid(m_combinedVersion)) m_appState = appState::waitLen;
       else                                   m_appState = appState::versionError;
       break;
     case appState::waitLen:
-      m_AppStrLen = data;
+      m_AppStrLen = m_rxBuf;
       m_appState = appState::waitAppName;
       {
         uint8_t len;
@@ -137,7 +135,7 @@ void LittleLessApplicationA::handleVersionByte(llp_MsgType msgType, uint8_t pos,
         char *name;
         getAppName(len, &name);
         pos -= 4;
-        if (data != pgm_read_byte(name + pos)) {
+        if (m_rxBuf != pgm_read_byte(name + pos)) {
           m_appState = appState::versionError;
           break;
         }
@@ -159,8 +157,8 @@ void LittleLessApplicationA::handleVersionByte(llp_MsgType msgType, uint8_t pos,
   }
 }
 
-void LittleLessApplicationA::handleVersionBytesFinish(llp_MsgType msgType, uint8_t chkSum, bool chkSumOK) {
-  if ((m_appState == appState::waitVersionDone) && chkSumOK) {
+void LittleLessApplicationA::handleVersionFinish(llp_MsgType msgType, uint8_t chkSum, bool msgOK) {
+  if ((m_appState == appState::waitVersionDone) && msgOK) {
     m_connected = true;
     m_appState = appState::connected;
     if (msgType == llp_MsgType::request) {
