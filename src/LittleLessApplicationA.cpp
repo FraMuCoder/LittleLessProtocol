@@ -6,13 +6,17 @@
  */
 
 #include "LittleLessApplicationA.h"
-#include <Arduino.h>
+#ifdef ARDUINO
+  #include <Arduino.h>
+#else
+  #include <string.h>
+#endif
 
-static const char CMD_VERSION[3] PROGMEM = "ver";
-static const char CMD_ECHO[3]    PROGMEM = "ech";
-static const char CMD_DEBUG[3]   PROGMEM = "dbg";
+static const char CMD_VERSION[3] _LLP_FLASHMEM_ = "ver";
+static const char CMD_ECHO[3]    _LLP_FLASHMEM_ = "ech";
+static const char CMD_DEBUG[3]   _LLP_FLASHMEM_ = "dbg";
 
-const char * const LittleLessApplicationA::S_CMDS[3] PROGMEM = {
+const char * const LittleLessApplicationA::S_CMDS[3] _LLP_FLASHMEM_ = {
   CMD_VERSION, CMD_ECHO, CMD_DEBUG
 };
 
@@ -49,7 +53,7 @@ bool LittleLessApplicationA::canHandleMsg(llp_MsgType msgType, uint8_t cmdId, ll
   }
 }
 
-void LittleLessApplicationA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) {
+void LittleLessApplicationA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) {
   switch ((cmd)cmdId) {
     case cmd::Version: handleVersionData(msgType, rx); break;
   }
@@ -63,18 +67,28 @@ void LittleLessApplicationA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId,
 
 uint8_t LittleLessApplicationA::getCmdId(const char cmd[3]) {
   for (uint8_t i = 0; i < sizeof(S_CMDS)/sizeof(S_CMDS[0]); ++i) {
+  #ifdef __AVR__
     char *str = pgm_read_ptr(S_CMDS + i);
     if (0 == memcmp_P(cmd, str, 3)) {
       return i;
     }
+  #else
+    if (0 == memcmp(cmd, S_CMDS[i], 3)) {
+      return i;
+    }
+  #endif
   }
   return 0xFF;
 }
 
 bool LittleLessApplicationA::getCmdStr(uint8_t cmdId, char cmd[3]) {
   if (cmdId < sizeof(S_CMDS)/sizeof(S_CMDS[0])) {
+  #ifdef __AVR__
     char *str = pgm_read_ptr(S_CMDS + cmdId);
     memcpy_P(cmd, str, 3);
+  #else
+    memcpy(cmd, S_CMDS[cmdId], 3);
+  #endif
     return true;
   } else {
     return false;
@@ -135,10 +149,17 @@ void LittleLessApplicationA::handleVersionData(llp_MsgType msgType, const llp_Rx
         char *name;
         getAppName(len, &name);
         pos -= 4;
+      #ifdef __AVR__
         if (m_rxBuf != pgm_read_byte(name + pos)) {
           m_appState = appState::versionError;
           break;
         }
+      #else
+        if (m_rxBuf != name[pos]) {
+          m_appState = appState::versionError;
+          break;
+        }
+      #endif
         if ((pos+1) >= len) {
           if ((m_AppStrLen >> 4) == 0) m_appState = appState::waitVersionDone;
           else                         m_appState = appState::waitAppExtra;

@@ -136,7 +136,11 @@ void LittleLessProtocolA::sendStr(uint8_t len, const char *str) {
 
 void LittleLessProtocolA::sendStr_P(uint8_t len, const char *str) {
   for (; len > 0; --len, ++str) {
+  #ifdef __AVM__
     sendChar(pgm_read_byte(str));
+  #else
+    sendChar(*str);
+  #endif
   }
   setBin();
 }
@@ -163,10 +167,11 @@ void LittleLessProtocolA::loop() {
     char c = m_stream.read();
 
     if ((c == '\n') || (c == '\r')) {
-      if (m_readState == frameState::done) {
+      if (   (m_readState == frameState::done)
+          && (m_rxData.buf && m_rxData.bufTotalSize)) {
         handleMsgFinish(m_msgType, m_cmdId, 0xFF, true);
       } else {
-        handleMsgFinish(m_msgType, m_cmdId, 0xFF, false);
+        handleError();
       }
       m_readState = frameState::type;
       m_cmdLen = 0;
@@ -216,8 +221,9 @@ void LittleLessProtocolA::loop() {
               m_rxData.msgTotalSize = (uint8_t)val;
               m_rxData.bufOffset = 0;
               m_rxData.bufSize = 0;
-              if (canHandleMsg(m_msgType, m_cmdId, m_rxData)) m_readState = frameState::colon2;
-              else                                            handleError();
+              bool canHandle = canHandleMsg(m_msgType, m_cmdId, m_rxData);
+              if (canHandle && m_rxData.buf && m_rxData.bufTotalSize) m_readState = frameState::colon2;
+              else                                                    handleError();
             }
           }
           break;
@@ -228,13 +234,7 @@ void LittleLessProtocolA::loop() {
           } else if ((m_rxData.bufOffset + m_rxData.bufSize) < m_rxData.msgTotalSize) {
             int val = readHex(c);
             if (val >= 0) {
-              m_rxData.buf[m_rxData.bufSize] = (uint8_t)val;
-              ++m_rxData.bufSize;
-              if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-                handleMsgData(m_msgType, m_cmdId, m_rxData);
-                m_rxData.bufOffset += m_rxData.bufTotalSize;
-                m_rxData.bufSize = 0;
-              }
+              fillBuffer((uint8_t)val);
               if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
                 if (m_rxData.bufSize > 0) {
                   handleMsgData(m_msgType, m_cmdId, m_rxData);
@@ -261,13 +261,7 @@ void LittleLessProtocolA::loop() {
             if (c == '\\') {
               m_readState = frameState::dataASCIIesc;
             } else {
-              m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
-              ++m_rxData.bufSize;
-              if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-                handleMsgData(m_msgType, m_cmdId, m_rxData);
-                m_rxData.bufOffset += m_rxData.bufTotalSize;
-                m_rxData.bufSize = 0;
-              }
+              fillBuffer((uint8_t)c);
             }
           } else {
             handleError();
@@ -275,13 +269,7 @@ void LittleLessProtocolA::loop() {
           break;
         ////////////////////////////////////////////////////////
         case frameState::dataASCIIesc:
-          m_rxData.buf[m_rxData.bufSize] = (uint8_t)c;
-          ++m_rxData.bufSize;
-          if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
-            handleMsgData(m_msgType, m_cmdId, m_rxData);
-            m_rxData.bufOffset += m_rxData.bufTotalSize;
-            m_rxData.bufSize = 0;
-          }
+          fillBuffer((uint8_t)c);
           if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
             if (m_rxData.bufSize > 0) {
               handleMsgData(m_msgType, m_cmdId, m_rxData);
@@ -330,4 +318,19 @@ void LittleLessProtocolA::handleError() {
     handleMsgFinish(m_msgType, m_cmdId, 0xFF, false);
   }
   m_readState = frameState::error;
+}
+
+void LittleLessProtocolA::fillBuffer(uint8_t d) {
+  if (m_rxData.buf && m_rxData.bufTotalSize) {
+    m_rxData.buf[m_rxData.bufSize] = d;
+    ++m_rxData.bufSize;
+    if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
+      uint8_t newOffset = m_rxData.bufOffset + m_rxData.bufTotalSize;
+      handleMsgData(m_msgType, m_cmdId, m_rxData);
+      m_rxData.bufOffset = newOffset;
+      m_rxData.bufSize = 0;
+    }
+  } else {
+    handleError();
+  }
 }

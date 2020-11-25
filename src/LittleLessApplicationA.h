@@ -29,7 +29,7 @@ public:
   // Rx part
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx);
+  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
   virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK);
 
   // general part
@@ -69,7 +69,7 @@ private:
   bool          m_reqVerResp;
 
   static const uint8_t S_PROTO_VERSION = 0xF0;  // Debug version
-  static const char * const S_CMDS[3] PROGMEM;
+  static const char * const S_CMDS[3] _LLP_FLASHMEM_;
 
   bool canHandleVersion(llp_MsgType msgType, llp_RxStruct &rx);
   void handleVersionData(llp_MsgType msgType, const llp_RxStruct &rx);

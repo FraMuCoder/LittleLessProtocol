@@ -73,6 +73,7 @@ private:
   bool setBin();
   bool setASCII();
   void handleError();
+  void fillBuffer(uint8_t d);
 };
 
 

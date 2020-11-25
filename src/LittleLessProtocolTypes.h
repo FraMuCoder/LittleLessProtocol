@@ -10,6 +10,14 @@
 
 #include <stdint.h>
 
+#ifdef __AVR__
+  #define _LLP_FLASHMEM_ PROGMEM
+#endif
+
+#ifndef _LLP_FLASHMEM_
+  #define _LLP_FLASHMEM_
+#endif
+
 enum class llp_MsgType {
   request   = 0,
   response  = 1,
@@ -58,7 +66,7 @@ public:
   // Rx part
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
-  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx) = 0;
+  virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
   virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK) = 0;
   
   // general part
