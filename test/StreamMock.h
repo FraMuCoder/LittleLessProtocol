@@ -64,6 +64,7 @@ public:
       str += (char)d;
     }
     m_dataOut.clear();
+    return str;
   }
 
 private:
