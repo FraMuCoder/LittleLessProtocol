@@ -11,8 +11,6 @@
 
 #include "gtest/gtest.h"
 
-
-using ::testing::StrictMock;
 using ::testing::_;
 using ::testing::Return;
 

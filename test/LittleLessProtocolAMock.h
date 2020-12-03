@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef _TESTPROTOCOL_H_
-#define _TESTPROTOCOL_H_
+#ifndef _LITTLELESSPROTOCOLAMOCK_H_
+#define _LITTLELESSPROTOCOLAMOCK_H_
 
 #include <LittleLessProtocol.h>
 #include "gmock/gmock.h"
@@ -25,4 +25,4 @@ LittleLessProtocolAMock(Stream &stream)
   MOCK_METHOD2(getCmdStr, bool(uint8_t cmdId, char cmd[3]));
 };
 
-#endif // _TESTPROTOCOL_H_
+#endif // _LITTLELESSPROTOCOLAMOCK_H_

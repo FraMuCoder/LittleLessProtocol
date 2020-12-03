@@ -5,12 +5,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef _LITTLELESSAPPLICATIONA_H_
-#define _LITTLELESSAPPLICATIONA_H_
+#ifndef _LITTLELESSBASEA_H_
+#define _LITTLELESSBASEA_H_
 
 #include "LittleLessProtocolA.h"
 
-class LittleLessApplicationA : public LittleLessProtocolA {
+class LittleLessBaseA : public LittleLessProtocolA {
 public:
   enum class cmd {
     Version,
@@ -24,7 +24,7 @@ public:
     FirstUser
   };
   
-  LittleLessApplicationA(Stream &stream, uint8_t version);
+  LittleLessBaseA(Stream &stream, uint8_t version);
 
   // Rx part
   
@@ -39,13 +39,17 @@ public:
   
   virtual void loop();
 
-  virtual void getAppName(uint8_t &len, char **name) = 0;
-  virtual void getAppExtra(uint8_t &len, char **extra) = 0;
+  virtual void getAppName(uint8_t &len, const char **name) = 0;
+  virtual void getAppExtra(uint8_t &len, const char **extra) = 0;
   
   bool isConnected() { return m_connected; }
+  virtual void handleConStateChanged(bool conState) = 0;
+
+  uint8_t getEfectiveRxVersion() { return m_otherVersion >> 4; }
+  uint8_t getEfectiveTxVersion() { return m_combinedVersion >> 4; }
 
 private:
-  enum class appState {
+  enum class conState {
     noConnection,
     waitProtoVersion,
     waitAppVersion,
@@ -59,7 +63,7 @@ private:
   };
 
   bool          m_connected;
-  appState      m_appState;
+  conState      m_conState;
   uint8_t       m_rxBuf;
   uint8_t       m_protoVersion;
   const uint8_t m_ownVersion;       ///< upper nibble max. supported version, lower nibbler min. supported version
@@ -77,4 +81,4 @@ private:
   void sendVersion(llp_MsgType msgType);
 };
 
-#endif // _LITTLELESSAPPLICATIONA_H_
+#endif // _LITTLELESSBASEA_H_

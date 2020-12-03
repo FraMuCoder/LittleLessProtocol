@@ -9,6 +9,6 @@
 #define _LITTLELESSPROTOCOL_H_
 
 #include "LittleLessProtocolA.h"
-#include "LittleLessApplicationA.h"
+#include "LittleLessBaseA.h"
 
 #endif // _LITTLELESSPROTOCOL_H_
