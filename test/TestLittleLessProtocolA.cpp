@@ -181,6 +181,98 @@ TEST(LittleLessProtocolA, rxValidUpdateFrame) {
   EXPECT_EQ(buf[2], 0xee);
 }
 
+TEST(LittleLessProtocolA, rxValidASCIIFrame) {
+  StreamMock sm;
+  LittleLessProtocolAMock testObj(sm);
+
+  std::string frame("#upd:06:\"CAFFEE\":ff\r\n");
+  sm.putInput(frame);
+
+  uint8_t buf[10] = {0};
+
+  EXPECT_CALL(testObj, getCmdId(IsCMD("upd")))
+      .WillOnce(Return(128));
+  EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 128, IsMsgTotalSize(6)))
+      .WillOnce(setBuf(buf, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(6, buf, sizeof(buf), 0, 6)))
+      .Times(1);
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, 0xFF, true))
+      .Times(1);
+
+  EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+
+  for (int i = 0; i < frame.size(); ++i) {
+    testObj.loop();
+  }
+
+  EXPECT_EQ(buf[0], 'C');
+  EXPECT_EQ(buf[1], 'A');
+  EXPECT_EQ(buf[2], 'F');
+  EXPECT_EQ(buf[3], 'F');
+  EXPECT_EQ(buf[4], 'E');
+  EXPECT_EQ(buf[5], 'E');
+}
+
+TEST(LittleLessProtocolA, rxValidMixedFrame) {
+  StreamMock sm;
+  LittleLessProtocolAMock testObj(sm);
+
+  std::string frame("#upd:05:CA\"FFEE\":ff\r\n");
+  sm.putInput(frame);
+
+  uint8_t buf[10] = {0};
+
+  EXPECT_CALL(testObj, getCmdId(IsCMD("upd")))
+      .WillOnce(Return(128));
+  EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 128, IsMsgTotalSize(5)))
+      .WillOnce(setBuf(buf, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(5, buf, sizeof(buf), 0, 5)))
+      .Times(1);
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, 0xFF, true))
+      .Times(1);
+
+  EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+
+  for (int i = 0; i < frame.size(); ++i) {
+    testObj.loop();
+  }
+
+  EXPECT_EQ(buf[0], 0xca);
+  EXPECT_EQ(buf[1], 'F');
+  EXPECT_EQ(buf[2], 'F');
+  EXPECT_EQ(buf[3], 'E');
+  EXPECT_EQ(buf[4], 'E');
+}
+
+TEST(LittleLessProtocolA, rxValidFrameWithEmptyASCII) {
+  StreamMock sm;
+  LittleLessProtocolAMock testObj(sm);
+
+  std::string frame("#upd:03:CA\"\"FFEE\"\":ff\r\n");
+  sm.putInput(frame);
+
+  uint8_t buf[10] = {0};
+
+  EXPECT_CALL(testObj, getCmdId(IsCMD("upd")))
+      .WillOnce(Return(128));
+  EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 128, IsMsgTotalSize(3)))
+      .WillOnce(setBuf(buf, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(3, buf, sizeof(buf), 0, 3)))
+      .Times(1);
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, 0xFF, true))
+      .Times(1);
+
+  EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+
+  for (int i = 0; i < frame.size(); ++i) {
+    testObj.loop();
+  }
+
+  EXPECT_EQ(buf[0], 0xca);
+  EXPECT_EQ(buf[1], 0xff);
+  EXPECT_EQ(buf[2], 0xee);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Invalid rx frames
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,12 +340,11 @@ TEST(LittleLessProtocolA, rxInvalidFrameColon3BadChar) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(3)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 254, IsRxStruct(3, buf, 5, 0, 3)))
-      .Times(1);
   EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, _, false))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+  EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);
 
   for (int i = 0; i < frame.size(); ++i) {
     testObj.loop();
@@ -273,12 +364,11 @@ TEST(LittleLessProtocolA, rxInvalidFrameDataToLong) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(2)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 254, IsRxStruct(2, buf, 5, 0, 2)))
-      .Times(1);
   EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, _, false))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+  EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);
 
   for (int i = 0; i < frame.size(); ++i) {
     testObj.loop();

@@ -190,21 +190,6 @@ void LittleLessProtocolA::loop() {
           else                                 handleError();
           break;
         ////////////////////////////////////////////////////////
-        //case frameState::colon1:
-        case frameState::colon1:
-        case frameState::colon2:
-        case frameState::colon3:
-          if (c == ':') {
-            if ((frameState::colon2 == m_readState) && (m_rxData.msgTotalSize == 0)) {
-              m_readState = frameState::colon3;
-            } else {
-              m_readState = (frameState)((int)m_readState + 1);
-            }
-          } else {
-            handleError();
-          }
-          break;
-        ////////////////////////////////////////////////////////
         case frameState::cmd:
           m_cmd[m_cmdLen] = c;
           ++m_cmdLen;
@@ -216,6 +201,11 @@ void LittleLessProtocolA::loop() {
               handleError();
             }
           }
+          break;
+        ////////////////////////////////////////////////////////
+        case frameState::colon1:
+          if (c == ':') { m_readState = frameState::len; }
+          else          { handleError();                 }
           break;
         ////////////////////////////////////////////////////////
         case frameState::len:
@@ -233,6 +223,18 @@ void LittleLessProtocolA::loop() {
           }
           break;
         ////////////////////////////////////////////////////////
+        case frameState::colon2:
+          if (c == ':') {
+            if (m_rxData.msgTotalSize == 0) {
+              m_readState = frameState::colon3;
+            } else {
+              m_readState = frameState::dataBin;
+            }
+          } else {
+            handleError();
+          }
+          break;
+        ////////////////////////////////////////////////////////
         case frameState::dataBin:
           if (c == '"') {
             m_readState = frameState::dataASCII;
@@ -241,9 +243,6 @@ void LittleLessProtocolA::loop() {
             if (val >= 0) {
               fillBuffer((uint8_t)val);
               if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
-                if (m_rxData.bufSize > 0) {
-                  handleMsgData(m_msgType, m_cmdId, m_rxData);
-                }
                 m_readState = frameState::colon3;
               }
             }
@@ -255,9 +254,6 @@ void LittleLessProtocolA::loop() {
         case frameState::dataASCII:
           if (c == '"') {
             if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
-              if (m_rxData.bufSize > 0) {
-                handleMsgData(m_msgType, m_cmdId, m_rxData);
-              }
               m_readState = frameState::colon3;
             } else {
               m_readState = frameState::dataBin;
@@ -276,12 +272,22 @@ void LittleLessProtocolA::loop() {
         case frameState::dataASCIIesc:
           fillBuffer((uint8_t)c);
           if ((m_rxData.bufOffset + m_rxData.bufSize) >= m_rxData.msgTotalSize) {
-            if (m_rxData.bufSize > 0) {
-              handleMsgData(m_msgType, m_cmdId, m_rxData);
-            }
             m_readState = frameState::colon3;
           } else {
             m_readState = frameState::dataASCII;
+          }
+          break;
+        ////////////////////////////////////////////////////////
+        case frameState::colon3:
+          if (c == ':') {
+            if (m_rxData.bufSize > 0) {
+              handleMsgData(m_msgType, m_cmdId, m_rxData);
+            }
+            m_readState = frameState::checkSum;
+          } else if (c == '"') {
+            m_readState = frameState::dataASCII;
+          } else {
+            handleError();
           }
           break;
         ////////////////////////////////////////////////////////
