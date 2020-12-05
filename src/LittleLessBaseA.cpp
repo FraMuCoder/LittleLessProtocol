@@ -47,21 +47,21 @@ LittleLessBaseA::LittleLessBaseA(Stream &stream, uint8_t version)
 
   
 bool LittleLessBaseA::canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) {
-  switch ((cmd)cmdId) {
+  switch (cmdId) {
     case cmd::Version: return canHandleVersion(msgType, rx);
     default:           return false;
   }
 }
 
 void LittleLessBaseA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) {
-  switch ((cmd)cmdId) {
+  switch (cmdId) {
     case cmd::Version: handleVersionData(msgType, rx); break;
   }
 }
 
-void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK) {
-    switch ((cmd)cmdId) {
-      case cmd::Version: handleVersionFinish(msgType, chkSum, msgOK); break;
+void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK) {
+    switch (cmdId) {
+      case cmd::Version: handleVersionFinish(msgType, msgOK); break;
     }
 }
 
@@ -178,7 +178,7 @@ void LittleLessBaseA::handleVersionData(llp_MsgType msgType, const llp_RxStruct 
   }
 }
 
-void LittleLessBaseA::handleVersionFinish(llp_MsgType msgType, uint8_t chkSum, bool msgOK) {
+void LittleLessBaseA::handleVersionFinish(llp_MsgType msgType, bool msgOK) {
   bool oldCon = m_connected;
   if ((m_conState == conState::waitVersionDone) && msgOK) {
     m_connected = true;

@@ -18,7 +18,7 @@
   #define _LLP_FLASHMEM_
 #endif
 
-enum class llp_MsgType {
+enum class llp_MsgType : uint8_t {
   request   = 0,
   response  = 1,
   error     = 2,
@@ -67,7 +67,7 @@ public:
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK) = 0;
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK) = 0;
   
   // general part
 

@@ -12,16 +12,18 @@
 
 class LittleLessBaseA : public LittleLessProtocolA {
 public:
-  enum class cmd {
-    Version,
-    Echo,
-    Debug,
-    Res3,
-    Res4,
-    Res5,
-    Res6,
-    Res7,
-    FirstUser
+  struct cmd {
+    enum : uint8_t  {
+      Version,
+      Echo,
+      Debug,
+      Res3,
+      Res4,
+      Res5,
+      Res6,
+      Res7,
+      FirstUser
+    };
   };
   
   LittleLessBaseA(Stream &stream, uint8_t version);
@@ -30,7 +32,7 @@ public:
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, uint8_t chkSum, bool msgOK);
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK);
 
   // general part
 
@@ -77,7 +79,7 @@ private:
 
   bool canHandleVersion(llp_MsgType msgType, llp_RxStruct &rx);
   void handleVersionData(llp_MsgType msgType, const llp_RxStruct &rx);
-  void handleVersionFinish(llp_MsgType msgType, uint8_t chkSum, bool msgOK);
+  void handleVersionFinish(llp_MsgType msgType, bool msgOK);
   void sendVersion(llp_MsgType msgType);
 };
 
