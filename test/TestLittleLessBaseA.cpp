@@ -29,7 +29,7 @@ TEST(LittleLessBaseA, rxValidVersionRequest) {
   StreamMock sm;
   LittleLessBaseAMock testObj(sm, 0xF0);
 
-  std::string frame(">ver:0B:10101034\"Test\"\"App\":ff\r\n");
+  std::string frame(">ver:0B:10101043\"Test\"\"App\":ff\r\n");
   sm.putInput(frame);
 
   EXPECT_CALL(testObj, getAppName(_, _))

@@ -61,7 +61,7 @@ TEST(LittleLessProtocolA, rxValidRequestFrame) {
       .WillOnce(setBuf(buf, 1));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::request, 1, IsRxStruct(1, buf, 1, 0, 1)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::request, 1, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::request, 1, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -88,7 +88,7 @@ TEST(LittleLessProtocolA, rxValidResponseFrame) {
       .WillOnce(setBuf(buf, 2));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::response, 5, IsRxStruct(2, buf, 2, 0, 2)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::response, 5, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::response, 5, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -116,7 +116,7 @@ TEST(LittleLessProtocolA, rxValidErrorFrame) {
       .WillOnce(setBuf(buf, 5));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::error, 7, IsRxStruct(3, buf, 5, 0, 3)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::error, 7, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::error, 7, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -141,7 +141,7 @@ TEST(LittleLessProtocolA, rxValidEmptyErrorFrame) {
       .WillOnce(Return(7));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::error, 7, IsMsgTotalSize(0)))
       .WillOnce(setBuf(NULL, 0));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::error, 7, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::error, 7, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);
@@ -167,7 +167,7 @@ TEST(LittleLessProtocolA, rxValidUpdateFrame) {
       .WillOnce(setBuf(buf, 5));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 254, IsRxStruct(3, buf, 5, 0, 3)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -196,7 +196,7 @@ TEST(LittleLessProtocolA, rxValidASCIIFrame) {
       .WillOnce(setBuf(buf, sizeof(buf)));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(6, buf, sizeof(buf), 0, 6)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -228,7 +228,7 @@ TEST(LittleLessProtocolA, rxValidMixedFrame) {
       .WillOnce(setBuf(buf, sizeof(buf)));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(5, buf, sizeof(buf), 0, 5)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -259,7 +259,7 @@ TEST(LittleLessProtocolA, rxValidFrameWithEmptyASCII) {
       .WillOnce(setBuf(buf, sizeof(buf)));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(3, buf, sizeof(buf), 0, 3)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, true))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, llp_result::ok))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -272,6 +272,67 @@ TEST(LittleLessProtocolA, rxValidFrameWithEmptyASCII) {
   EXPECT_EQ(buf[1], 0xff);
   EXPECT_EQ(buf[2], 0xee);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Special rx handling
+////////////////////////////////////////////////////////////////////////////////
+
+TEST(LittleLessProtocolA, rxAbortedByApplicationInMiddle) {
+  StreamMock sm;
+  LittleLessProtocolAMock testObj(sm);
+
+  std::string frame("#upd:03:CAFFEE:ff\r\n");
+  sm.putInput(frame);
+
+  uint8_t buf[1] = {0};
+
+  EXPECT_CALL(testObj, getCmdId(IsCMD("upd")))
+      .WillOnce(Return(128));
+  EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 128, IsMsgTotalSize(3)))
+      .WillOnce(setBuf(buf, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(3, buf, sizeof(buf), 0, 1)))
+      .WillOnce(setBuf(NULL, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, llp_result::applicationAbort))
+      .Times(1);
+
+  EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+
+  for (int i = 0; i < frame.size(); ++i) {
+    testObj.loop();
+  }
+
+  EXPECT_EQ(buf[0], 0xca);
+}
+
+TEST(LittleLessProtocolA, rxAbortedByApplicationAtEnd) {
+  StreamMock sm;
+  LittleLessProtocolAMock testObj(sm);
+
+  std::string frame("#upd:03:CAFFEE:ff\r\n");
+  sm.putInput(frame);
+
+  uint8_t buf[10] = {0};
+
+  EXPECT_CALL(testObj, getCmdId(IsCMD("upd")))
+      .WillOnce(Return(128));
+  EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 128, IsMsgTotalSize(3)))
+      .WillOnce(setBuf(buf, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 128, IsRxStruct(3, buf, sizeof(buf), 0, 3)))
+      .WillOnce(setBuf(NULL, sizeof(buf)));
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 128, llp_result::applicationAbort))
+      .Times(1);
+
+  EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
+
+  for (int i = 0; i < frame.size(); ++i) {
+    testObj.loop();
+  }
+
+  EXPECT_EQ(buf[0], 0xca);
+  EXPECT_EQ(buf[1], 0xff);
+  EXPECT_EQ(buf[2], 0xee);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Invalid rx frames
@@ -292,7 +353,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameToLongChecksum) {
       .WillOnce(setBuf(buf, 5));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 254, IsRxStruct(3, buf, 5, 0, 3)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -317,7 +378,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameChecksumBadChar) {
       .WillOnce(setBuf(buf, 5));
   EXPECT_CALL(testObj, handleMsgData(llp_MsgType::update, 254, IsRxStruct(3, buf, 5, 0, 3)))
       .Times(1);
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -340,7 +401,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameColon3BadChar) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(3)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -364,7 +425,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameDataToLong) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(2)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, getCmdStr(_, _)).Times(0);
@@ -388,7 +449,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameDataToShort) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(4)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);
@@ -412,7 +473,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameDataBadChar) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(3)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);
@@ -436,7 +497,7 @@ TEST(LittleLessProtocolA, rxInvalidFrameColon2BadChar) {
       .WillOnce(Return(254));
   EXPECT_CALL(testObj, canHandleMsg(llp_MsgType::update, 254, IsMsgTotalSize(3)))
       .WillOnce(setBuf(buf, 5));
-  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, false))
+  EXPECT_CALL(testObj, handleMsgFinish(llp_MsgType::update, 254, llp_result::frameError))
       .Times(1);
 
   EXPECT_CALL(testObj, handleMsgData(_, _, _)).Times(0);

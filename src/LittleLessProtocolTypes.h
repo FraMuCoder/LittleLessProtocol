@@ -47,27 +47,25 @@ struct llp_RxStruct {
   uint8_t bufSize;
 };
 
+enum class llp_result : uint8_t {
+  ok,
+  error,
+  frameError,
+  unknownMsgType,
+  unknownCommand,
+  applicationAbort,
+  busy
+};
 
 class ALittleLessProtocol {
 public:
   virtual ~ALittleLessProtocol() {}
-  
-  // Tx part
-  
-  virtual bool canSend() = 0;
-  virtual void startFrame(llp_MsgType msgType, uint8_t cmdId, uint8_t len) = 0;
-  virtual void sendByte(uint8_t b) = 0;
-  virtual void sendChar(char c) = 0;
-  virtual void sendData(uint8_t len, const uint8_t *data) = 0;
-  virtual void sendStr(uint8_t len, const char *str) = 0;
-  virtual void endFrame() = 0;
-  virtual void abortFrame() = 0;
 
   // Rx part
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK) = 0;
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result) = 0;
   
   // general part
 

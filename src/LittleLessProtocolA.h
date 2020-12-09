@@ -32,15 +32,15 @@ public:
 
   // Tx part
   
-  virtual bool canSend();
-  virtual void startFrame(llp_MsgType msgType, uint8_t cmdId, uint8_t len);
-  virtual void sendByte(uint8_t b);
-  virtual void sendChar(char c);
-  virtual void sendData(uint8_t len, const uint8_t *data);
-  virtual void sendStr(uint8_t len, const char *str);
-  virtual void sendStr_P(uint8_t len, const char *str);
-  virtual void endFrame();
-  virtual void abortFrame();
+  bool canSend();
+  void startFrame(llp_MsgType msgType, uint8_t cmdId, uint8_t len);
+  void sendByte(uint8_t b);
+  void sendChar(char c);
+  void sendData(uint8_t len, const uint8_t *data);
+  void sendStr(uint8_t len, const char *str);
+  void sendStr_P(uint8_t len, const char *str);
+  void endFrame();
+  void abortFrame();
 
   virtual void loop();
 
@@ -72,7 +72,7 @@ private:
   int readHex(char c);
   bool setBin();
   bool setASCII();
-  void handleError();
+  void handleError(llp_result err = llp_result::error);
   void fillBuffer(uint8_t d);
 };
 

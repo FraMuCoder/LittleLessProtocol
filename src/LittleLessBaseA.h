@@ -32,7 +32,7 @@ public:
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK);
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result);
 
   // general part
 
@@ -44,6 +44,7 @@ public:
   virtual void getAppName(uint8_t &len, const char **name) = 0;
   virtual void getAppExtra(uint8_t &len, const char **extra) = 0;
   
+  void requestVersion() { m_reqVerRequ = true; }
   bool isConnected() { return m_connected; }
   virtual void handleConStateChanged(bool conState) = 0;
 
@@ -73,13 +74,14 @@ private:
   uint8_t       m_combinedVersion;
   uint8_t       m_AppStrLen;
   bool          m_reqVerResp;
+  bool          m_reqVerRequ;
 
   static const uint8_t S_PROTO_VERSION = 0xF0;  // Debug version
   static const char * const S_CMDS[3] _LLP_FLASHMEM_;
 
   bool canHandleVersion(llp_MsgType msgType, llp_RxStruct &rx);
   void handleVersionData(llp_MsgType msgType, const llp_RxStruct &rx);
-  void handleVersionFinish(llp_MsgType msgType, bool msgOK);
+  void handleVersionFinish(llp_MsgType msgType, llp_result result);
   void sendVersion(llp_MsgType msgType);
 };
 

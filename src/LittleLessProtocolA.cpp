@@ -136,7 +136,7 @@ void LittleLessProtocolA::sendStr(uint8_t len, const char *str) {
 
 void LittleLessProtocolA::sendStr_P(uint8_t len, const char *str) {
   for (; len > 0; --len, ++str) {
-  #ifdef __AVM__
+  #ifdef __AVR__
     sendChar(pgm_read_byte(str));
   #else
     sendChar(*str);
@@ -169,9 +169,9 @@ void LittleLessProtocolA::loop() {
     if ((c == '\n') || (c == '\r')) {
       if (   (m_readState == frameState::done)
           && ((m_rxData.buf && m_rxData.bufTotalSize) || (m_rxData.msgTotalSize == 0))) {
-        handleMsgFinish(m_msgType, m_cmdId, true);
+        handleMsgFinish(m_msgType, m_cmdId, llp_result::ok);
       } else {
-        handleError();
+        handleError(llp_result::frameError);
       }
       m_readState = frameState::type;
       m_cmdLen = 0;
@@ -187,7 +187,7 @@ void LittleLessProtocolA::loop() {
             default:  m_msgType = llp_MsgType::none; break;
           }
           if ( m_msgType != llp_MsgType::none) m_readState = frameState::cmd;
-          else                                 handleError();
+          else                                 handleError(llp_result::unknownMsgType);
           break;
         ////////////////////////////////////////////////////////
         case frameState::cmd:
@@ -198,14 +198,14 @@ void LittleLessProtocolA::loop() {
             if (m_cmdId < 0xFF) {
               m_readState = frameState::colon1;
             } else {
-              handleError();
+              handleError(llp_result::unknownCommand);
             }
           }
           break;
         ////////////////////////////////////////////////////////
         case frameState::colon1:
-          if (c == ':') { m_readState = frameState::len; }
-          else          { handleError();                 }
+          if (c == ':') m_readState = frameState::len;
+          else          handleError(llp_result::frameError);
           break;
         ////////////////////////////////////////////////////////
         case frameState::len:
@@ -218,7 +218,7 @@ void LittleLessProtocolA::loop() {
               bool canHandle = canHandleMsg(m_msgType, m_cmdId, m_rxData);
               if (canHandle && 
                   ((m_rxData.buf && m_rxData.bufTotalSize) || (val == 0))) m_readState = frameState::colon2;
-              else                                                         handleError();
+              else                                                         handleError(llp_result::applicationAbort);
             }
           }
           break;
@@ -231,7 +231,7 @@ void LittleLessProtocolA::loop() {
               m_readState = frameState::dataBin;
             }
           } else {
-            handleError();
+            handleError(llp_result::frameError);
           }
           break;
         ////////////////////////////////////////////////////////
@@ -247,7 +247,7 @@ void LittleLessProtocolA::loop() {
               }
             }
           } else {
-            handleError();
+            handleError(llp_result::frameError);
           }
           break;
         ////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ void LittleLessProtocolA::loop() {
               fillBuffer((uint8_t)c);
             }
           } else {
-            handleError();
+            handleError(llp_result::frameError);
           }
           break;
         ////////////////////////////////////////////////////////
@@ -282,12 +282,16 @@ void LittleLessProtocolA::loop() {
           if (c == ':') {
             if (m_rxData.bufSize > 0) {
               handleMsgData(m_msgType, m_cmdId, m_rxData);
+              if ((NULL == m_rxData.buf) || (0 == m_rxData.bufTotalSize)) {
+                handleError(llp_result::applicationAbort);
+                break;
+              }
             }
             m_readState = frameState::checkSum;
           } else if (c == '"') {
             m_readState = frameState::dataASCII;
           } else {
-            handleError();
+            handleError(llp_result::frameError);
           }
           break;
         ////////////////////////////////////////////////////////
@@ -302,6 +306,10 @@ void LittleLessProtocolA::loop() {
           break;
         ////////////////////////////////////////////////////////
         case frameState::error:
+          break;
+        ////////////////////////////////////////////////////////
+        case frameState::done:
+          handleError(llp_result::frameError);
           break;
         ////////////////////////////////////////////////////////
         default:
@@ -325,15 +333,15 @@ int LittleLessProtocolA::readHex(char c) {
       return -1; // not finish
     }
   } else {
-    handleError();
+    handleError(llp_result::frameError);
     return -2;  // error
   }
 }
 
-void LittleLessProtocolA::handleError() {
+void LittleLessProtocolA::handleError(llp_result err) {
   if (   (m_readState >= frameState::colon2)
       && (m_readState <= frameState::done)) {
-    handleMsgFinish(m_msgType, m_cmdId, false);
+    handleMsgFinish(m_msgType, m_cmdId, err);
   }
   m_readState = frameState::error;
 }
@@ -345,10 +353,13 @@ void LittleLessProtocolA::fillBuffer(uint8_t d) {
     if (m_rxData.bufSize >= m_rxData.bufTotalSize) {
       uint8_t newOffset = m_rxData.bufOffset + m_rxData.bufTotalSize;
       handleMsgData(m_msgType, m_cmdId, m_rxData);
+      if ((NULL == m_rxData.buf) || (0 == m_rxData.bufTotalSize)) {
+        handleError(llp_result::applicationAbort);
+      }
       m_rxData.bufOffset = newOffset;
       m_rxData.bufSize = 0;
     }
   } else {
-    handleError();
+    handleError(llp_result::applicationAbort);
   }
 }

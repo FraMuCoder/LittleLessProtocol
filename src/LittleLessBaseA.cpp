@@ -43,6 +43,7 @@ LittleLessBaseA::LittleLessBaseA(Stream &stream, uint8_t version)
   , m_otherVersion(0xF0)
   , m_combinedVersion(version)
   , m_reqVerResp(false)
+  , m_reqVerRequ(false)
 {}
 
   
@@ -59,9 +60,9 @@ void LittleLessBaseA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxSt
   }
 }
 
-void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, bool msgOK) {
+void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result) {
     switch (cmdId) {
-      case cmd::Version: handleVersionFinish(msgType, msgOK); break;
+      case cmd::Version: handleVersionFinish(msgType, result); break;
     }
 }
 
@@ -100,6 +101,9 @@ void LittleLessBaseA::loop() {
   if (m_reqVerResp && canSend()) {
     sendVersion(llp_MsgType::response);
     m_reqVerResp = false;
+  } else if (m_reqVerRequ && canSend()) {
+    sendVersion(llp_MsgType::request);
+    m_reqVerRequ = false;
   }
 }
 
@@ -140,7 +144,7 @@ void LittleLessBaseA::handleVersionData(llp_MsgType msgType, const llp_RxStruct 
         char *name;
         getAppName(len, &name);
         if (len > 0xf) len = 0xf;
-        if (len != (m_AppStrLen & 0x0F)) m_conState = conState::versionError;
+        if (len != (m_AppStrLen >> 4)) m_conState = conState::versionError;
       }
       break;
     case conState::waitAppName:
@@ -161,14 +165,14 @@ void LittleLessBaseA::handleVersionData(llp_MsgType msgType, const llp_RxStruct 
         }
       #endif
         if ((pos+1) >= len) {
-          if ((m_AppStrLen >> 4) == 0) m_conState = conState::waitVersionDone;
-          else                         m_conState = conState::waitAppExtra;
+          if ((m_AppStrLen & 0x0F) == 0) m_conState = conState::waitVersionDone;
+          else                           m_conState = conState::waitAppExtra;
         }
       }
       break;
     case conState::waitAppExtra:
-      pos -= 4 + (m_AppStrLen & 0x0F);
-      if ((pos+1) >= (m_AppStrLen >> 4)) {
+      pos -= 4 + (m_AppStrLen >> 4);
+      if ((pos+1) >= (m_AppStrLen & 0x0F)) {
         m_conState = conState::waitVersionDone;
       }
       break;
@@ -178,9 +182,9 @@ void LittleLessBaseA::handleVersionData(llp_MsgType msgType, const llp_RxStruct 
   }
 }
 
-void LittleLessBaseA::handleVersionFinish(llp_MsgType msgType, bool msgOK) {
+void LittleLessBaseA::handleVersionFinish(llp_MsgType msgType, llp_result result) {
   bool oldCon = m_connected;
-  if ((m_conState == conState::waitVersionDone) && msgOK) {
+  if ((m_conState == conState::waitVersionDone) && (llp_result::ok == result)) {
     m_connected = true;
     m_conState = conState::connected;
     if (msgType == llp_MsgType::request) {
@@ -205,11 +209,11 @@ void LittleLessBaseA::sendVersion(llp_MsgType msgType) {
   getAppExtra(extraLen, &extra);
   if (extraLen > 0xf) extraLen = 0xf;
   uint8_t len = 4 + nameLen + extraLen;
-  startFrame(llp_MsgType::response, uint8_t(cmd::Version), len);
+  startFrame(msgType, uint8_t(cmd::Version), len);
   sendByte(S_PROTO_VERSION);
   sendByte(m_ownVersion);
   sendByte(m_combinedVersion);
-  sendByte((extraLen << 4) | nameLen);
+  sendByte((nameLen << 4) | extraLen);
   sendStr_P(nameLen, name);
   sendStr_P(extraLen, extra);
   endFrame();
