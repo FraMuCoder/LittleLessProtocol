@@ -1,0 +1,18 @@
+name:         Echo Service
+code:         Echo
+minVersion:   1
+maxVersion:   1
+description:  Just a simple echo service.
+commands:
+    - id:           0
+      name:         Echo
+      code:         ECH
+      description:  |
+                    Use markdown to describe your command.
+      messages:
+          - messageTypes:
+                - '>'
+                - '<'
+            description:    All data received via '>' is echoed via '<'
+            structureType:  markdown
+            structureDesc:  Just some binary data
