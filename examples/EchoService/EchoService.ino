@@ -45,11 +45,11 @@ public:
   virtual bool getCmdStr(uint8_t cmdId, char cmd[3]);
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result);
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx, llp_result result);
 
   inline bool canHandleEcho(llp_MsgType msgType, llp_RxStruct &rx);
   inline void handleEchoData(llp_MsgType msgType, llp_RxStruct &rx);
-  inline void handleEchoFinish(llp_MsgType msgType, llp_result result);
+  inline void handleEchoFinish(llp_MsgType msgType, const llp_RxStruct &rx, llp_result result);
 
 private:
   static const char * const S_CMDS[];
@@ -97,7 +97,7 @@ void EchoServiceProtocolA::handleEchoData(llp_MsgType msgType, llp_RxStruct &rx)
   sendByte(m_rxBuffer);
 }
 
-void EchoServiceProtocolA::handleEchoFinish(llp_MsgType msgType, llp_result result) {
+void EchoServiceProtocolA::handleEchoFinish(llp_MsgType msgType, const llp_RxStruct &rx, llp_result result) {
   if (llp_result::ok == result) {
     endFrame();   // end a valid frame
   } else {

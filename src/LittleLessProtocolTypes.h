@@ -65,7 +65,7 @@ public:
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx) = 0;
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result) = 0;
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx, llp_result result) = 0;
   
   // general part
 

@@ -60,7 +60,7 @@ void LittleLessBaseA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxSt
   }
 }
 
-void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result) {
+void LittleLessBaseA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &, llp_result result) {
     switch (cmdId) {
       case cmd::Version: handleVersionFinish(msgType, result); break;
     }

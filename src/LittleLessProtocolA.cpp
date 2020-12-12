@@ -169,7 +169,7 @@ void LittleLessProtocolA::loop() {
     if ((c == '\n') || (c == '\r')) {
       if (   (m_readState == frameState::done)
           && ((m_rxData.buf && m_rxData.bufTotalSize) || (m_rxData.msgTotalSize == 0))) {
-        handleMsgFinish(m_msgType, m_cmdId, llp_result::ok);
+        handleMsgFinish(m_msgType, m_cmdId, m_rxData, llp_result::ok);
       } else {
         handleError(llp_result::frameError);
       }
@@ -341,7 +341,7 @@ int LittleLessProtocolA::readHex(char c) {
 void LittleLessProtocolA::handleError(llp_result err) {
   if (   (m_readState >= frameState::colon2)
       && (m_readState <= frameState::done)) {
-    handleMsgFinish(m_msgType, m_cmdId, err);
+    handleMsgFinish(m_msgType, m_cmdId, m_rxData, err);
   }
   m_readState = frameState::error;
 }

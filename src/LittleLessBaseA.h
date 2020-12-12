@@ -32,7 +32,7 @@ public:
   
   virtual bool canHandleMsg(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
   virtual void handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp_RxStruct &rx);
-  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result);
+  virtual void handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx, llp_result result);
 
   // general part
 

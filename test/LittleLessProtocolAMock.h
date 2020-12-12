@@ -20,7 +20,7 @@ LittleLessProtocolAMock(Stream &stream)
 
   MOCK_METHOD3(canHandleMsg, bool(llp_MsgType , uint8_t, llp_RxStruct &));
   MOCK_METHOD3(handleMsgData, void(llp_MsgType , uint8_t, llp_RxStruct &));
-  MOCK_METHOD3(handleMsgFinish, void(llp_MsgType , uint8_t, llp_result));
+  MOCK_METHOD4(handleMsgFinish, void(llp_MsgType , uint8_t, const llp_RxStruct &, llp_result));
   MOCK_METHOD1(getCmdId, uint8_t(const char cmd[3]));
   MOCK_METHOD2(getCmdStr, bool(uint8_t cmdId, char cmd[3]));
 };

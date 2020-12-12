@@ -51,9 +51,9 @@ void EchoServiceProtocolA::handleMsgData(llp_MsgType msgType, uint8_t cmdId, llp
   }
 }
 
-void EchoServiceProtocolA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, llp_result result) {
+void EchoServiceProtocolA::handleMsgFinish(llp_MsgType msgType, uint8_t cmdId, const llp_RxStruct &rx, llp_result result) {
   switch (cmdId) {
-    case cmd::Echo: handleEchoFinish(msgType, result); break;
+    case cmd::Echo: handleEchoFinish(msgType, rx, result); break;
     default:
       break;
   }
