@@ -1,0 +1,128 @@
+name:         Chat Protocol
+code:         Chat
+minVersion:   1
+maxVersion:   1
+baseProtocol: LittleLessBase
+participants:
+              -       name : Client
+              -       name : Server
+description:  |
+              Serial chat protocol.
+commands:
+    - id:             8
+      name:           Login
+      code:           LOG
+      description:    |
+                      Login to chat system.
+                      If the user name is not known at chat system a new account is created.
+      messages:
+                      - senders:
+                                          - Client
+                        receivers:
+                                          - Server
+                        messageTypes:
+                                          - '>'
+                        description:      Client tries to login at server.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param   | Length | Description
+                                          | ------- | ------:| -----------
+                                          | userLen |      1 | Length of user name (binary, 1..10)
+                                          | user    |  1..10 | User name (ASCII)
+                                          | pwLen   |      1 | Length of password (binary, 4..20)
+                                          | pw      |  4..20 | Password (ASCII)
+                      - senders:
+                                          - Server
+                        receivers:
+                                          - Client
+                        messageTypes:
+                                          - '<'
+                        description:      Server sends login result to client.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param  | Length | Description
+                                          | ------ | ------:| -----------
+                                          | result |      1 | 0 => OK, 1 => error (binary)
+    - id:             9
+      name:           Message
+      code:           MSG
+      description:    Send a chat message.
+      messages:
+                      - senders:
+                                          - Client
+                        receivers:
+                                          - Server
+                        messageTypes:
+                                          - '>'
+                        description:      |
+                                          Client sends a message to server.
+                                          There is no response from server.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param | Length | Description
+                                          | ----- | ------:| -----------
+                                          | text  | 1..100 | Chat message (ASCII)
+                      - senders:
+                                          - Server
+                        receivers:
+                                          - Client
+                        messageTypes:
+                                          - '<'
+                        description:      Server sends a message from a client to an other client.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param   | Length | Description
+                                          | ------- | ------:| -----------
+                                          | userLen |      1 | Length of user name (binary, 1..10)
+                                          | user    |  1..10 | User name (ASCII)
+                                          | text    | 1..100 | Chat message (ASCII)
+    - id:             10
+      name:           User list
+      code:           LST
+      description:    |
+                      List logged in users.
+
+                      A typical sequence is:
+                      
+                      1. `>LST:00::FF`
+                      2. `#LST:05:"UserA":FF`
+                      3. `#LST:05:"UserB":FF`
+                      4. `#LST:05:"UserC":FF`
+                      5. `<LST:02:0300:FF`
+      messages:
+                      - senders:
+                                          - Client
+                        receivers:
+                                          - Server
+                        messageTypes:
+                                          - '>'
+                        description:      Client requests the list of logged in users.
+                        structureType:    markdown
+                        structureDesc:    Empty data
+                      - senders:
+                                          - Server
+                        receivers:
+                                          - Client
+                        messageTypes:
+                                          - '#'
+                        description:      |
+                                          Server sends one of the logged in users.
+                                          The server send one message of this type for every logged in user also the requested user.
+                                          This messages are send before result is send.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param | Length | Description
+                                          | ----- | ------:| -----------
+                                          | user  |  1..10 | User name (ASCII)
+                      - senders:
+                                          - Server
+                        receivers:
+                                          - Client
+                        messageTypes:
+                                          - '<'
+                        description:      Sever finish the client request to list all logged in users.
+                        structureType:    markdown
+                        structureDesc:    |
+                                          | Param  | Length | Description
+                                          | ------ | ------:| -----------
+                                          | count  |      1 | User count (0..255) (binary)
